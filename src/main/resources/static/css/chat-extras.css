@@ -1,0 +1,232 @@
+@charset "ISO-8859-1";
+/* ============================================================
+   chat-extras.css — NexLink v6
+   Add this <link> (or paste into your main stylesheet) alongside
+   your existing styles. These rules handle:
+     • .msg-wrapper + .msg-options-btn  (▾ hover button)
+     • .msg-options-menu                (dropdown)
+     • .file-action-row / -btn          (Open + Download)
+     • .forward-picker                  (forward modal)
+     • .saved-location-hint
+   ============================================================ */
+
+/* ── Message wrapper ──────────────────────────────────────── */
+.msg-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 100%;
+}
+
+/* The actual text inside a text bubble */
+.msg-text {
+  display: inline-block;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── ▾ Options button ─────────────────────────────────────── */
+.msg-options-btn {
+  flex-shrink: 0;
+  order: 999;            /* always rightmost */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s, visibility 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font-size: 13px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+/* Show on hover / focus over the whole bubble */
+.message:hover .msg-options-btn,
+.message:focus-within .msg-options-btn {
+  opacity: 0.65;
+  visibility: visible;
+}
+
+.msg-options-btn:hover {
+  opacity: 1 !important;
+  background: rgba(128,128,128,0.15);
+}
+
+/* Touch devices — always visible so users can tap */
+@media (hover: none) {
+  .msg-options-btn {
+    opacity: 0.5;
+    visibility: visible;
+  }
+}
+
+/* ── Dropdown menu ────────────────────────────────────────── */
+.msg-options-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 9999;
+  background: var(--bg-elevated, #fff);
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.14);
+  min-width: 148px;
+  padding: 4px 0;
+  overflow: hidden;
+  animation: menuPop 0.12s ease-out;
+}
+
+@keyframes menuPop {
+  from { opacity: 0; transform: scale(0.92) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+.msg-options-menu button {
+  display: block;
+  width: 100%;
+  padding: 9px 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13.5px;
+  color: inherit;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+
+.msg-options-menu button:hover {
+  background: rgba(128,128,128,0.12);
+}
+
+/* ── File action row (Open / Download buttons) ────────────── */
+.file-action-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.file-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid currentColor;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.file-action-btn:hover {
+  opacity: 1;
+  background: rgba(128,128,128,0.1);
+}
+
+.file-action-btn.open-btn {
+  border-color: #4a90d9;
+  color: #4a90d9;
+}
+
+.file-action-btn.dl-btn {
+  border-color: #5cb85c;
+  color: #5cb85c;
+}
+
+/* ── Saved-to-disk hint (stream mode) ─────────────────────── */
+.saved-location-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  opacity: 0.65;
+  margin-top: 6px;
+}
+
+/* ── Forward picker modal ─────────────────────────────────── */
+.forward-picker {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10000;
+  background: var(--bg-elevated, #fff);
+  border: 1px solid rgba(0,0,0,0.14);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+  min-width: 260px;
+  max-width: 340px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 0 0 8px;
+  animation: menuPop 0.15s ease-out;
+}
+
+.forward-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  position: sticky;
+  top: 0;
+  background: inherit;
+  border-radius: 14px 14px 0 0;
+}
+
+.forward-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  opacity: 0.55;
+  padding: 2px 6px;
+  border-radius: 6px;
+  line-height: 1;
+  transition: opacity 0.15s, background 0.15s;
+}
+.forward-close-btn:hover { opacity: 1; background: rgba(0,0,0,0.07); }
+
+.forward-section-label {
+  padding: 8px 16px 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.45;
+  font-weight: 600;
+}
+
+.forward-target-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.12s;
+  border-radius: 0;
+  color: inherit;
+}
+.forward-target-btn:hover { background: rgba(128,128,128,0.1); }
+
+.forward-empty {
+  padding: 20px 16px;
+  text-align: center;
+  opacity: 0.45;
+  font-size: 13px;
+}
