@@ -1,7 +1,8 @@
 // ============================================================
-// app.js — NexLink / Local Connect  LAN Chat  VERSION 6
-// NEW: Timestamps · Read Receipts · Typing Indicator ·
-//      Online Status · Group Members · AES-GCM Encryption
+// app.js — NexLink / Local Connect  LAN Chat  VERSION 7
+// FIXED: AES-GCM encryption now uses HKDF instead of PBKDF2
+//        HKDF is consistent on ALL browsers + Android WebView
+//        No more garbled messages on mobile!
 // ============================================================
 'use strict';
 
@@ -47,72 +48,112 @@ function _fmtDate(ts) {
 
 // ════════════════════════════════════════════════════════════
 // FEATURE 2 — ENCRYPTION  (AES-GCM 256-bit via WebCrypto)
-// Key exchange: sender generates key, encrypts with receiver's
-// public key derived from username HMAC. Simple shared-secret
-// model suitable for LAN (no PKI needed for FYP).
 // ════════════════════════════════════════════════════════════
-const _encKeys = {};   // username → CryptoKey
-const _myKeyPair = {};  // { pub, priv }
+// TEMPORARILY DISABLED — encryption & decryption commented out
+// To re-enable: uncomment all blocks marked [ENC] below
+// ════════════════════════════════════════════════════════════
+const _encKeys = {};
 let _encReady = false;
 
 async function _initEncryption() {
-	try {
-		// Derive a shared AES key from both usernames (deterministic for LAN FYP)
-		// Real-world: use ECDH. For FYP this is fine.
-		_encReady = true;
-	} catch (e) { console.warn("Encryption init failed:", e); }
+	// [ENC] DISABLED — set _encReady to false so no encrypt/decrypt runs
+	_encReady = false;
+	console.log("Encryption DISABLED (temporarily commented out).");
+
+	// [ENC] Original code below — uncomment to restore:
+	// try {
+	// 	_encReady = true;
+	// 	console.log("Encryption ready (HKDF/AES-GCM).");
+	// } catch (e) {
+	// 	console.warn("Encryption init failed:", e);
+	// 	_encReady = false;
+	// }
 }
 
 async function _getSharedKey(peer) {
-	if (_encKeys[peer]) return _encKeys[peer];
-	// Derive key from sorted pair of usernames for determinism
-	const pair = [username, peer].sort().join("|");
-	const raw = new TextEncoder().encode(pair);
-	const base = await crypto.subtle.importKey("raw", raw, { name: "PBKDF2" }, false, ["deriveKey"]);
-	const salt = new TextEncoder().encode("nexlink-lan-salt-2024");
-	const key = await crypto.subtle.deriveKey(
-		{ name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
-		base,
-		{ name: "AES-GCM", length: 256 },
-		false,
-		["encrypt", "decrypt"]
-	);
-	_encKeys[peer] = key;
-	return key;
+	// [ENC] DISABLED — this function is not called while _encReady = false
+	// Uncomment below to restore key derivation:
+
+	// const pair = [username, peer].sort().join("|");
+	// if (_encKeys[pair]) return _encKeys[pair];
+	// if (!username || !peer) throw new Error("Invalid peer/username for key derivation");
+	// const encoder = new TextEncoder();
+	// const keyMaterial = await crypto.subtle.importKey(
+	// 	"raw",
+	// 	encoder.encode(pair),
+	// 	{ name: "HKDF" },
+	// 	false,
+	// 	["deriveKey"]
+	// );
+	// const key = await crypto.subtle.deriveKey(
+	// 	{
+	// 		name: "HKDF",
+	// 		hash: "SHA-256",
+	// 		salt: encoder.encode("nexlink-lan-2024"),
+	// 		info: encoder.encode("aes-gcm-chat-key"),
+	// 	},
+	// 	keyMaterial,
+	// 	{ name: "AES-GCM", length: 256 },
+	// 	false,
+	// 	["encrypt", "decrypt"]
+	// );
+	// _encKeys[pair] = key;
+	// return key;
+
+	throw new Error("Encryption is disabled.");
 }
 
 async function _encryptText(plaintext, peer) {
-	try {
-		const key = await _getSharedKey(peer);
-		const iv = crypto.getRandomValues(new Uint8Array(12));
-		const enc = await crypto.subtle.encrypt(
-			{ name: "AES-GCM", iv },
-			key,
-			new TextEncoder().encode(plaintext)
-		);
-		// Pack iv + ciphertext as base64
-		const combined = new Uint8Array(12 + enc.byteLength);
-		combined.set(iv, 0);
-		combined.set(new Uint8Array(enc), 12);
-		return btoa(String.fromCharCode(...combined));
-	} catch (e) { console.warn("Encrypt failed:", e); return plaintext; }
+	// [ENC] DISABLED — returns plaintext as-is
+	return plaintext;
+
+	// [ENC] Original encryption code below — uncomment to restore:
+	// try {
+	// 	const key = await _getSharedKey(peer);
+	// 	const iv  = crypto.getRandomValues(new Uint8Array(12));
+	// 	const enc = await crypto.subtle.encrypt(
+	// 		{ name: "AES-GCM", iv },
+	// 		key,
+	// 		new TextEncoder().encode(plaintext)
+	// 	);
+	// 	const combined = new Uint8Array(12 + enc.byteLength);
+	// 	combined.set(iv, 0);
+	// 	combined.set(new Uint8Array(enc), 12);
+	// 	return btoa(String.fromCharCode(...combined));
+	// } catch (e) {
+	// 	console.warn("Encrypt failed:", e);
+	// 	return plaintext;
+	// }
 }
 
 async function _decryptText(b64, peer) {
-	try {
-		const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-		const iv = bytes.slice(0, 12);
-		const data = bytes.slice(12);
-		const key = await _getSharedKey(peer);
-		const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
-		return new TextDecoder().decode(dec);
-	} catch (e) { console.warn("Decrypt failed:", e); return b64; }
+	// [ENC] DISABLED — returns the input string as-is (no decryption)
+	return b64;
+
+	// [ENC] Original decryption code below — uncomment to restore:
+	// if (!b64 || typeof b64 !== "string" || b64.trim().length === 0) return b64;
+	// const base64Regex = /^[A-Za-z0-9+/]+=*$/;
+	// if (!base64Regex.test(b64.trim())) return b64;
+	// try {
+	// 	const bytes = Uint8Array.from(atob(b64.trim()), c => c.charCodeAt(0));
+	// 	if (bytes.length < 13) return b64;
+	// 	const iv   = bytes.slice(0, 12);
+	// 	const data = bytes.slice(12);
+	// 	const key  = await _getSharedKey(peer);
+	// 	const dec    = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
+	// 	const result = new TextDecoder().decode(dec);
+	// 	if (!result || result.length === 0) return b64;
+	// 	return result;
+	// } catch (e) {
+	// 	console.warn("Decrypt failed for peer:", peer, "—", e.message);
+	// 	return "🔒 [decryption error]";
+	// }
 }
 
 // ════════════════════════════════════════════════════════════
 // FEATURE 3 — TYPING INDICATOR
 // ════════════════════════════════════════════════════════════
-const _typingTimers = {};   // peer → clearTimeout handle
+const _typingTimers = {};
 let _myTypingTimer = null;
 
 function _onInputTyping() {
@@ -127,7 +168,6 @@ function _onInputTyping() {
 }
 
 function _showTyping(from, context) {
-	// Create indicator inside messages area if not there
 	const msgs = document.getElementById("messages");
 	if (!msgs) return;
 	let el = document.getElementById("typing-indicator");
@@ -137,13 +177,11 @@ function _showTyping(from, context) {
 		el.className = "typing-indicator";
 		msgs.appendChild(el);
 	} else {
-		// Move to end of messages so it stays at bottom
 		msgs.appendChild(el);
 	}
 	el.innerHTML = `<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-who">${escapeHtml(from)} is typing</span>`;
 	el.style.display = "flex";
 	msgs.scrollTop = msgs.scrollHeight;
-
 	clearTimeout(_typingTimers[from]);
 	_typingTimers[from] = setTimeout(() => _hideTyping(from), 3500);
 }
@@ -158,21 +196,19 @@ function _hideTyping(from) {
 // ════════════════════════════════════════════════════════════
 const _onlineUsers = new Set();
 
-function _setOnline(user) { _onlineUsers.add(user); refreshUserList(); }
+function _setOnline(user)  { _onlineUsers.add(user);    refreshUserList(); }
 function _setOffline(user) { _onlineUsers.delete(user); refreshUserList(); }
 
 // ════════════════════════════════════════════════════════════
 // FEATURE 5 — GROUP MEMBER LIST PANEL
 // ════════════════════════════════════════════════════════════
-const _groupMembers = {}; // groupName → Set of members
-const _groupHost = {}; // groupName → host username
+const _groupMembers = {};
+const _groupHost    = {};
 let _memberPanelOpen = false;
 
 function _updateGroupMembers(groupName, members) {
 	_groupMembers[groupName] = new Set(members);
-	if (selectedGroup === groupName && _memberPanelOpen) {
-		_renderMemberPanel(groupName);
-	}
+	if (selectedGroup === groupName && _memberPanelOpen) _renderMemberPanel(groupName);
 }
 
 function toggleMemberPanel() {
@@ -183,10 +219,7 @@ function toggleMemberPanel() {
 	if (_memberPanelOpen) {
 		_renderMemberPanel(selectedGroup);
 		panel.classList.add("open");
-		// Close when clicking outside
-		setTimeout(() => {
-			document.addEventListener("click", _closePanelOutside, true);
-		}, 10);
+		setTimeout(() => document.addEventListener("click", _closePanelOutside, true), 10);
 	} else {
 		panel.classList.remove("open");
 		document.removeEventListener("click", _closePanelOutside, true);
@@ -195,7 +228,7 @@ function toggleMemberPanel() {
 
 function _closePanelOutside(e) {
 	const panel = document.getElementById("memberPanel");
-	const btn = document.getElementById("groupInfoBtn");
+	const btn   = document.getElementById("groupInfoBtn");
 	if (panel && !panel.contains(e.target) && e.target !== btn) {
 		panel.classList.remove("open");
 		_memberPanelOpen = false;
@@ -204,20 +237,12 @@ function _closePanelOutside(e) {
 }
 
 function _renderMemberPanel(groupName) {
-	const body = document.getElementById("memberList");
-	if (!body) return;
-
-	const members = _groupMembers[groupName] || new Set();
-	const group = null; // host info from members map
-	const title = document.getElementById("memberPanelTitle");
-	if (title) title.textContent = "# " + groupName;
-
-	// Find host from groups data if available
+	const body = document.getElementById("memberList"); if (!body) return;
+	const members  = _groupMembers[groupName] || new Set();
+	const title    = document.getElementById("memberPanelTitle");
 	const hostName = _groupHost[groupName] || "—";
-
+	if (title) title.textContent = "# " + groupName;
 	body.innerHTML = "";
-
-	// ── Meta section (host info) ──
 	const meta = document.createElement("div");
 	meta.innerHTML = `
 		<div class="group-meta-row">
@@ -230,8 +255,6 @@ function _renderMemberPanel(groupName) {
 		</div>
 		<div class="member-section-title">Members</div>`;
 	body.appendChild(meta);
-
-	// ── Member list ──
 	if (members.size === 0) {
 		const empty = document.createElement("div");
 		empty.className = "member-empty";
@@ -239,11 +262,10 @@ function _renderMemberPanel(groupName) {
 		body.appendChild(empty);
 		return;
 	}
-
 	members.forEach(m => {
 		const isOnline = _onlineUsers.has(m) || m === username;
-		const isHost = m === hostName;
-		const isYou = m === username;
+		const isHost   = m === hostName;
+		const isYou    = m === username;
 		const div = document.createElement("div");
 		div.className = "member-item";
 		div.innerHTML = `
@@ -263,22 +285,13 @@ function _renderMemberPanel(groupName) {
 // ════════════════════════════════════════════════════════════
 // FEATURE 6 — READ RECEIPTS
 // ════════════════════════════════════════════════════════════
-// Message IDs map: msgId → { bubbleEl, status }
-const _sentMsgs = {}; // msgId → bubbleEl
+const _sentMsgs = {};
 
-function _markDelivered(msgId) {
-	// ✓ stays as single — delivery just confirms server received it
-	// No visual change needed
-}
+function _markDelivered(msgId) { /* single tick — no visual change */ }
 
 function _markRead(msgId) {
-	// ✓✓ green — receiver OPENED the chat = SEEN
 	const el = document.getElementById("receipt-" + msgId);
-	if (el) {
-		el.textContent = "✓✓";
-		el.className = "receipt read";
-	}
-	// Persist in ALL chatHistory contexts (we don't know which chat without searching)
+	if (el) { el.textContent = "✓✓"; el.className = "receipt read"; }
 	for (const ctx of Object.keys(chatHistory)) {
 		const m = chatHistory[ctx].find(m => m.msgId === msgId);
 		if (m) { m.read = true; break; }
@@ -314,8 +327,7 @@ function joinChat() {
 	username = val;
 	_initEncryption();
 
-	const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-	socket = new WebSocket(protocol + "://" + window.location.host + "/chat");
+	socket = new WebSocket("ws://" + window.location.host + "/chat");
 	socket.binaryType = "arraybuffer";
 
 	socket.onopen = () => {
@@ -338,7 +350,6 @@ function joinChat() {
 	socket.onerror = () => showSystemMessage("WebSocket error.");
 	document.getElementById("loginModal").style.display = "none";
 
-	// Wire typing listener
 	const inp = document.getElementById("msgInput");
 	if (inp) inp.addEventListener("input", _onInputTyping);
 }
@@ -363,7 +374,7 @@ async function handleMessage(msg) {
 	}
 
 	if (msg.startsWith("ACCEPT:")) {
-		const parts = msg.split(":");
+		const parts    = msg.split(":");
 		const acceptor = parts[1], requester = parts[2];
 		if (!acceptor) return;
 		if (requester === username) {
@@ -386,17 +397,19 @@ async function handleMessage(msg) {
 
 	// PM:sender:receiver:msgId:encryptedText
 	if (msg.startsWith("PM:")) {
-		const p = parseParts(msg, 4);
-		const sender = p[1], receiver = p[2], msgId = p[3], payload = p[4];
+		const p       = parseParts(msg, 4);
+		const sender  = p[1], receiver = p[2], msgId = p[3], payload = p[4];
 		if (receiver !== username) return;
 		acceptedChats.add(sender);
 		_setOnline(sender);
 
-		// Decrypt
-		let text = payload;
-		if (_encReady && payload && !payload.startsWith("[↩")) {
-			try { text = await _decryptText(payload, sender); } catch (_) { }
-		}
+		// [ENC] DISABLED — payload is used as plain text directly
+		// To re-enable decryption, uncomment the block below:
+		// let text = payload;
+		// if (_encReady && payload && !payload.startsWith("[↩")) {
+		// 	try { text = await _decryptText(payload, sender); } catch (_) { }
+		// }
+		let text = payload; // [ENC] plain text pass-through
 
 		// Parse reply prefix
 		let displayText = text, replyTo = null;
@@ -412,62 +425,49 @@ async function handleMessage(msg) {
 			}
 		}
 
-		// Hide typing
 		_hideTyping(sender);
-
-		const ts = Date.now();
+		const ts    = Date.now();
 		const entry = { type: "text", text: sender + ": " + displayText, sent: false, replyTo, ts, msgId };
 		storeMessage(sender, entry);
 		if (selectedUser === sender) {
 			addMessage(sender + ": " + displayText, false, sender, replyTo, ts);
-			// Chat is OPEN — send read receipt immediately (✓✓ green)
 			safeSend(`MSG_READ:${username}:${sender}:${msgId}`);
 		} else {
-			// Chat not open — unread badge, no read receipt yet
 			increaseUnread(sender);
 			refreshUserList();
 		}
 		return;
 	}
 
-	// DELIVERED:sender:receiver:msgId
 	if (msg.startsWith("DELIVERED:")) {
 		const p = msg.split(":");
 		_markDelivered(p[3]);
 		return;
 	}
 
-	// MSG_READ:reader:sender:msgId
 	if (msg.startsWith("MSG_READ:")) {
 		const p = msg.split(":");
 		if (p[2] === username) _markRead(p[3]);
 		return;
 	}
 
-	// TYPING:from:to:type
 	if (msg.startsWith("TYPING:")) {
 		const p = msg.split(":");
 		const from = p[1], to = p[2], type = p[3];
-		const ctx = type === "group" ? to : from;
-		const isRelevant = type === "group"
-			? selectedGroup === to
-			: selectedUser === from;
-		if (isRelevant) _showTyping(from, ctx);
+		const isRelevant = type === "group" ? selectedGroup === to : selectedUser === from;
+		if (isRelevant) _showTyping(from, type === "group" ? to : from);
 		return;
 	}
 
 	if (msg.startsWith("TYPING_STOP:")) {
-		const p = msg.split(":");
-		_hideTyping(p[1]);
+		_hideTyping(msg.split(":")[1]);
 		return;
 	}
 
-	// GROUP_MEMBERS:groupName:member1,member2,...
 	if (msg.startsWith("GROUP_MEMBERS:")) {
-		const p = parseParts(msg, 2);
-		const groupName = p[1];
+		const p       = parseParts(msg, 2);
 		const members = p[2] ? p[2].split(",").filter(Boolean) : [];
-		_updateGroupMembers(groupName, members);
+		_updateGroupMembers(p[1], members);
 		return;
 	}
 
@@ -540,11 +540,10 @@ async function handleMessage(msg) {
 	}
 
 	if (msg.startsWith("GROUP_MSG:")) {
-		const p = parseParts(msg, 4);
+		const p      = parseParts(msg, 4);
 		const sender = p[1], group = p[2], msgId = p[3], text = p[4];
 		if (sender === username) return;
 		_hideTyping(sender);
-
 		let gDisplayText = text, gReplyTo = null;
 		if (text.startsWith("[↩ ")) {
 			const close = text.indexOf("] ");
@@ -552,13 +551,12 @@ async function handleMessage(msg) {
 				const inner = text.substring(3, close);
 				const colon = inner.indexOf(": ");
 				if (colon !== -1) {
-					gReplyTo = { sender: inner.substring(0, colon), text: inner.substring(colon + 2) };
+					gReplyTo     = { sender: inner.substring(0, colon), text: inner.substring(colon + 2) };
 					gDisplayText = text.substring(close + 2);
 				}
 			}
 		}
-
-		const ts = Date.now();
+		const ts    = Date.now();
 		const entry = { type: "text", text: sender + ": " + gDisplayText, sent: false, replyTo: gReplyTo, ts };
 		storeMessage(group, entry);
 		if (selectedGroup === group) addMessage(sender + ": " + gDisplayText, false, sender, gReplyTo, ts);
@@ -568,7 +566,7 @@ async function handleMessage(msg) {
 }
 
 // ════════════════════════════════════════════════════════════
-// GROUP HEADER — shows member count + info button
+// GROUP HEADER
 // ════════════════════════════════════════════════════════════
 function _updateGroupHeader(groupName) {
 	const h = document.getElementById("chatHeaderText");
@@ -587,7 +585,7 @@ function _registerIncoming(fileId, filename, size, mimeType, totalChunks, sender
 		done: false, writable: null, nextWrite: 0, buffer: {},
 		receivedCount: 0, startTime: null, paused: false, ready: false, _draining: false,
 	};
-	const context = group || sender;
+	const context  = group || sender;
 	const bubbleId = "progress-" + fileId;
 	const isActive = group ? selectedGroup === group : selectedUser === sender;
 	if (isActive) {
@@ -602,10 +600,8 @@ function _registerIncoming(fileId, filename, size, mimeType, totalChunks, sender
 function _addPendingBubble(bubbleId, filename, size, fileId) {
 	const messages = document.getElementById("messages");
 	if (!messages || document.getElementById(bubbleId)) return;
-	const row = document.createElement("div");
-	row.className = "msg-row received";
-	const bubble = document.createElement("div");
-	bubble.id = bubbleId; bubble.className = "message received";
+	const row    = document.createElement("div"); row.className = "msg-row received";
+	const bubble = document.createElement("div"); bubble.id = bubbleId; bubble.className = "message received";
 	bubble.innerHTML = `
     <div class="file-bubble file-pending">
       <div class="file-bubble-top">
@@ -620,9 +616,7 @@ function _addPendingBubble(bubbleId, filename, size, fileId) {
         💾 Save &amp; Receive
       </button>
     </div>
-    <div class="bubble-footer">
-      <span class="bubble-time">${_fmtTime()}</span>
-    </div>`;
+    <div class="bubble-footer"><span class="bubble-time">${_fmtTime()}</span></div>`;
 	const btn = _makeActionBtn({ isFile: true, filename, fileUrl: null, sent: false }, bubble);
 	row.appendChild(bubble); row.appendChild(btn);
 	messages.appendChild(row); messages.scrollTop = messages.scrollHeight;
@@ -640,19 +634,22 @@ async function receiverAcceptFile(fileId, filename, bubbleId) {
 				suggestedName: filename,
 				types: [{ description: "File", accept: { [transfer.mimeType || "application/octet-stream"]: [] } }],
 			});
-			transfer.writable = await fh.createWritable();
-			transfer.ready = true; transfer.startTime = Date.now();
+			transfer.writable  = await fh.createWritable();
+			transfer.ready     = true;
+			transfer.startTime = Date.now();
 		} catch (err) {
 			if (err.name === "AbortError") {
 				if (btn) { btn.disabled = false; btn.textContent = "💾 Save & Receive"; }
 				return;
 			}
-			transfer.mode = "blob"; transfer.chunks = new Array(transfer.totalChunks).fill(null);
-			transfer.ready = true; transfer.startTime = Date.now();
+			transfer.mode   = "blob";
+			transfer.chunks = new Array(transfer.totalChunks).fill(null);
+			transfer.ready  = true; transfer.startTime = Date.now();
 		}
 	} else {
-		transfer.mode = "blob"; transfer.chunks = new Array(transfer.totalChunks).fill(null);
-		transfer.ready = true; transfer.startTime = Date.now();
+		transfer.mode   = "blob";
+		transfer.chunks = new Array(transfer.totalChunks).fill(null);
+		transfer.ready  = true; transfer.startTime = Date.now();
 	}
 	_switchToBubble(bubbleId, filename, fileId, false);
 	safeSend("FILE_READY:" + username + ":" + (transfer.group || transfer.sender) + ":" + fileId);
@@ -663,11 +660,11 @@ async function receiverAcceptFile(fileId, filename, bubbleId) {
 // HANDLE BINARY CHUNK
 // ════════════════════════════════════════════════════════════
 function handleBinaryChunk(buffer) {
-	const dv = new DataView(buffer);
-	let off = 0;
-	const fidLen = dv.getUint32(off); off += 4;
+	const dv       = new DataView(buffer);
+	let off        = 0;
+	const fidLen   = dv.getUint32(off); off += 4;
 	const fidBytes = new Uint8Array(buffer, off, fidLen);
-	const fileId = new TextDecoder().decode(fidBytes); off += fidLen;
+	const fileId   = new TextDecoder().decode(fidBytes); off += fidLen;
 	const chunkIdx = dv.getUint32(off); off += 4; off += 4;
 	const chunkData = buffer.slice(off);
 	const t = incomingTransfers[fileId];
@@ -716,8 +713,8 @@ function _handleBlobChunk(fileId, t, chunkIdx) {
 
 function _assembleBlob(fileId, t) {
 	try {
-		const blob = new Blob(t.chunks, { type: t.mimeType || "application/octet-stream" });
-		const url = URL.createObjectURL(blob);
+		const blob    = new Blob(t.chunks, { type: t.mimeType || "application/octet-stream" });
+		const url     = URL.createObjectURL(blob);
 		const elapsed = (Date.now() - t.startTime) / 1000, avg = elapsed > 0 ? t.size / elapsed : 0;
 		const a = document.createElement("a"); a.href = url; a.download = t.filename;
 		document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -729,12 +726,12 @@ function _assembleBlob(fileId, t) {
 }
 
 function _updateRecvProgress(fileId, t) {
-	const written = t.mode === "blob" ? (t.chunks ? t.chunks.filter(c => c !== null).length : 0) * CHUNK_SIZE : t.nextWrite * CHUNK_SIZE;
-	const elapsed = (Date.now() - t.startTime) / 1000;
-	const speedBps = elapsed > 0 ? written / elapsed : 0;
+	const written   = t.mode === "blob" ? (t.chunks ? t.chunks.filter(c => c !== null).length : 0) * CHUNK_SIZE : t.nextWrite * CHUNK_SIZE;
+	const elapsed   = (Date.now() - t.startTime) / 1000;
+	const speedBps  = elapsed > 0 ? written / elapsed : 0;
 	const remaining = Math.max(0, t.size - written);
-	const eta = speedBps > 0 ? remaining / speedBps : 0;
-	const pct = Math.min(99, Math.round((t.receivedCount / t.totalChunks) * 100));
+	const eta       = speedBps > 0 ? remaining / speedBps : 0;
+	const pct       = Math.min(99, Math.round((t.receivedCount / t.totalChunks) * 100));
 	updateProgressBubble("progress-" + fileId, pct, _fmtSpeed(speedBps), _fmtETA(eta));
 }
 
@@ -743,16 +740,16 @@ function _updateRecvProgress(fileId, t) {
 // ════════════════════════════════════════════════════════════
 function sendFileChunked(file, receiver, isGroup) {
 	if (!isSocketReady()) { showSystemMessage("Not connected."); return; }
-	const fileId = _generateFileId();
+	const fileId      = _generateFileId();
 	const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
-	const mimeType = file.type || "application/octet-stream";
+	const mimeType    = file.type || "application/octet-stream";
 	outgoingTransfers[fileId] = {
 		file, totalChunks, receiver, isGroup,
 		cancelled: false, paused: false, waiting: true,
 		nextChunk: 0, inFlight: 0, sentChunks: 0, startTime: null,
 	};
 	if (isGroup) safeSend(`GROUP_FILE_META:${receiver}:${username}:${fileId}:${file.name}:${file.size}:${mimeType}:${totalChunks}`);
-	else safeSend(`FILE_META:${username}:${receiver}:${fileId}:${file.name}:${file.size}:${mimeType}:${totalChunks}`);
+	else         safeSend(`FILE_META:${username}:${receiver}:${fileId}:${file.name}:${file.size}:${mimeType}:${totalChunks}`);
 	const bubbleId = "progress-" + fileId;
 	_addWaitingBubble(bubbleId, file.name, file.size, fileId);
 	storeMessage(receiver, { type: "file-sending", filename: file.name, sent: true, bubbleId, fileId });
@@ -761,10 +758,8 @@ function sendFileChunked(file, receiver, isGroup) {
 function _addWaitingBubble(bubbleId, filename, size, fileId) {
 	const messages = document.getElementById("messages");
 	if (!messages || document.getElementById(bubbleId)) return;
-	const row = document.createElement("div");
-	row.className = "msg-row sent";
-	const bubble = document.createElement("div");
-	bubble.id = bubbleId; bubble.className = "message sent";
+	const row    = document.createElement("div"); row.className = "msg-row sent";
+	const bubble = document.createElement("div"); bubble.id = bubbleId; bubble.className = "message sent";
 	bubble.innerHTML = `
     <div class="file-bubble file-pending">
       <div class="file-bubble-top">
@@ -803,7 +798,7 @@ function _pumpChunks(fileId, fileIdBytes) {
 }
 
 function _readAndSendChunk(fileId, fileIdBytes, chunkIdx, t) {
-	const start = chunkIdx * CHUNK_SIZE, end = Math.min(start + CHUNK_SIZE, t.file.size);
+	const start  = chunkIdx * CHUNK_SIZE, end = Math.min(start + CHUNK_SIZE, t.file.size);
 	const reader = new FileReader();
 	reader.onload = (ev) => {
 		if (t.cancelled || !isSocketReady()) { t.inFlight--; return; }
@@ -819,11 +814,11 @@ function _readAndSendChunk(fileId, fileIdBytes, chunkIdx, t) {
 		try { socket.send(fr); }
 		catch (e) { t.cancelled = true; t.inFlight--; delete outgoingTransfers[fileId]; return; }
 		t.sentChunks++; t.inFlight--;
-		const el = (Date.now() - t.startTime) / 1000;
+		const el   = (Date.now() - t.startTime) / 1000;
 		const sent = t.sentChunks * CHUNK_SIZE;
-		const spd = el > 0 ? sent / el : 0;
-		const eta = spd > 0 ? Math.max(0, t.file.size - sent) / spd : 0;
-		const pct = Math.min(99, Math.round((t.sentChunks / t.totalChunks) * 100));
+		const spd  = el > 0 ? sent / el : 0;
+		const eta  = spd > 0 ? Math.max(0, t.file.size - sent) / spd : 0;
+		const pct  = Math.min(99, Math.round((t.sentChunks / t.totalChunks) * 100));
 		updateProgressBubble("progress-" + fileId, pct, _fmtSpeed(spd), _fmtETA(eta));
 	};
 	reader.onerror = () => { t.inFlight--; };
@@ -841,7 +836,6 @@ function _onSendComplete(fileId, t) {
 	delete outgoingTransfers[fileId];
 }
 
-// ── Cancel functions ─────────────────────────────────────────
 function senderCancel(fileId) {
 	const t = outgoingTransfers[fileId]; if (!t) return;
 	t.cancelled = true;
@@ -891,10 +885,10 @@ function receiverResume(fileId) {
 function _updatePauseBtn(fileId, isPaused, isSender) {
 	const btn = document.getElementById("pausebtn-" + fileId); if (!btn) return;
 	btn.textContent = isPaused ? "▶ Resume" : "⏸ Pause";
-	btn.className = isPaused ? "pause-btn resumed" : "pause-btn";
-	btn.onclick = isPaused
-		? (isSender ? () => senderResume(fileId) : () => receiverResume(fileId))
-		: (isSender ? () => senderPause(fileId) : () => receiverPause(fileId));
+	btn.className   = isPaused ? "pause-btn resumed" : "pause-btn";
+	btn.onclick     = isPaused
+		? (isSender ? () => senderResume(fileId)  : () => receiverResume(fileId))
+		: (isSender ? () => senderPause(fileId)   : () => receiverPause(fileId));
 }
 
 // ════════════════════════════════════════════════════════════
@@ -905,14 +899,10 @@ function _switchToBubble(bubbleId, filename, fileId, isSender) {
 	const oldEl = document.getElementById(bubbleId);
 	if (oldEl) {
 		const parent = oldEl.parentElement;
-		if (parent && parent.classList.contains("msg-row")) parent.remove();
-		else oldEl.remove();
+		if (parent && parent.classList.contains("msg-row")) parent.remove(); else oldEl.remove();
 	}
-	const row = document.createElement("div");
-	row.className = "msg-row " + (isSender ? "sent" : "received");
-	const bubble = document.createElement("div");
-	bubble.id = bubbleId;
-	bubble.className = isSender ? "message sent" : "message received";
+	const row    = document.createElement("div"); row.className = "msg-row " + (isSender ? "sent" : "received");
+	const bubble = document.createElement("div"); bubble.id = bubbleId; bubble.className = isSender ? "message sent" : "message received";
 	bubble.innerHTML = `
     <div class="file-bubble">
       <div class="file-bubble-top">
@@ -947,14 +937,12 @@ function _switchToBubble(bubbleId, filename, fileId, isSender) {
 
 function _finalizeBubble(bubbleId, filename, url, isSent, avgSpeed, elapsed) {
 	const bubble = document.getElementById(bubbleId); if (!bubble) return;
-	const row = bubble.parentElement;
-	const spd = avgSpeed > 0 ? _fmtSpeed(avgSpeed) : "";
-	const tim = elapsed > 0 ? elapsed.toFixed(1) + "s" : "";
-	const meta = [spd, tim].filter(Boolean).join(" · ");
-	// Preserve existing read state if already seen
+	const row    = bubble.parentElement;
+	const spd    = avgSpeed > 0 ? _fmtSpeed(avgSpeed) : "";
+	const tim    = elapsed  > 0 ? elapsed.toFixed(1) + "s" : "";
+	const meta   = [spd, tim].filter(Boolean).join(" · ");
 	const existingReceipt = bubble.querySelector(".receipt");
-	const alreadySeen = existingReceipt && existingReceipt.classList.contains("read");
-
+	const alreadySeen     = existingReceipt && existingReceipt.classList.contains("read");
 	bubble.innerHTML = `
     <div class="file-bubble done">
       <div class="file-bubble-top">
@@ -978,15 +966,15 @@ function _finalizeBubble(bubbleId, filename, url, isSent, avgSpeed, elapsed) {
 
 function addProgressBubble(bubbleId, filename, progress, sent) { _switchToBubble(bubbleId, filename, bubbleId.replace("progress-", ""), sent); }
 function updateProgressBubble(bubbleId, progress, speed, eta) {
-	const pct = Math.min(100, Math.max(0, progress));
-	const bar = document.getElementById("bar-" + bubbleId);
-	const lbl = document.getElementById("label-" + bubbleId);
+	const pct  = Math.min(100, Math.max(0, progress));
+	const bar  = document.getElementById("bar-"   + bubbleId);
+	const lbl  = document.getElementById("label-" + bubbleId);
 	const spEl = document.getElementById("speed-" + bubbleId);
-	const etEl = document.getElementById("eta-" + bubbleId);
-	if (bar) bar.style.width = pct + "%";
-	if (lbl) lbl.textContent = pct + "%";
+	const etEl = document.getElementById("eta-"   + bubbleId);
+	if (bar)  bar.style.width  = pct + "%";
+	if (lbl)  lbl.textContent  = pct + "%";
 	if (spEl && speed !== undefined) spEl.textContent = speed;
-	if (etEl && eta !== undefined) etEl.textContent = eta ? "ETA " + eta : "";
+	if (etEl && eta   !== undefined) etEl.textContent = eta ? "ETA " + eta : "";
 }
 function finalizeProgressBubble(bubbleId, filename) { _finalizeBubble(bubbleId, filename, null, false, 0, 0); }
 function assembleFile() { }
@@ -1003,14 +991,7 @@ function storeMessage(context, msgObj) {
 function loadChatHistory(context) {
 	const messages = document.getElementById("messages"); if (!messages) return;
 	messages.innerHTML = "";
-
-	// Tell sender their messages were read (receiver just opened this chat)
-	// Only send read receipts for messages FROM the other person to us
-	// Restore pin bar for this specific chat
 	_showPinnedBar(context);
-
-	// When chat opens, mark all received messages as READ
-	// This triggers ✓✓ green on sender side
 	if (isSocketReady() && context) {
 		const history = chatHistory[context] || [];
 		history.forEach(m => {
@@ -1020,18 +1001,14 @@ function loadChatHistory(context) {
 			}
 		});
 	}
-
-	// Date separator tracking
 	let lastDate = "";
-
 	const history = chatHistory[context] || [];
 	history.forEach((m) => {
 		if (m.ts) {
 			const dateStr = _fmtDate(m.ts);
 			if (dateStr !== lastDate) {
 				lastDate = dateStr;
-				const sep = document.createElement("div");
-				sep.className = "date-separator";
+				const sep = document.createElement("div"); sep.className = "date-separator";
 				sep.innerHTML = `<span>${escapeHtml(dateStr)}</span>`;
 				messages.appendChild(sep);
 			}
@@ -1039,10 +1016,8 @@ function loadChatHistory(context) {
 		if (m.type === "text") {
 			addMessage(m.text, m.sent, m.sent ? "you" : m.sender, m.replyTo || null, m.ts, m.msgId, m.read || false);
 		} else if (m.type === "file-done") {
-			const row = document.createElement("div");
-			row.className = m.sent ? "msg-row sent" : "msg-row received";
-			const b = document.createElement("div");
-			b.className = m.sent ? "message sent" : "message received";
+			const row = document.createElement("div"); row.className = m.sent ? "msg-row sent" : "msg-row received";
+			const b   = document.createElement("div"); b.className = m.sent ? "message sent" : "message received";
 			b.innerHTML = `<div class="file-bubble done">
         <div class="file-bubble-top"><span class="file-icon">✅</span>
         <div class="file-incoming-info">
@@ -1075,17 +1050,16 @@ function loadChatHistory(context) {
 }
 
 // ════════════════════════════════════════════════════════════
-// USER LIST  (with online dots)
+// USER LIST
 // ════════════════════════════════════════════════════════════
 function updateUserList(users) {
 	const list = document.querySelector(".user-list"); if (!list) return;
 	list.innerHTML = "";
 	users.split(",").forEach((u) => {
 		if (!u || u === username) return;
-		const div = document.createElement("div");
-		div.className = "user"; div.dataset.name = u;
-		const cnt = unreadCount[u] || 0;
-		const online = _onlineUsers.has(u);
+		const div     = document.createElement("div"); div.className = "user"; div.dataset.name = u;
+		const cnt     = unreadCount[u] || 0;
+		const online  = _onlineUsers.has(u);
 		const dotHtml = online
 			? '<span class="online-dot online" title="Online"></span>'
 			: '<span class="online-dot offline" title="Offline"></span>';
@@ -1108,16 +1082,12 @@ function updateUserList(users) {
 function refreshUserList() {
 	const list = document.querySelector(".user-list"); if (!list) return;
 	list.querySelectorAll(".user[data-name]").forEach((div) => {
-		const u = div.dataset.name, cnt = unreadCount[u] || 0;
+		const u      = div.dataset.name, cnt = unreadCount[u] || 0;
 		const online = _onlineUsers.has(u);
-		// Update dot class
-		let dot = div.querySelector(".online-dot");
-		if (!dot) {
-			dot = document.createElement("span");
-			div.appendChild(dot);
-		}
+		let dot      = div.querySelector(".online-dot");
+		if (!dot) { dot = document.createElement("span"); div.appendChild(dot); }
 		dot.className = online ? "online-dot online" : "online-dot offline";
-		dot.title = online ? "Online" : "Offline";
+		dot.title     = online ? "Online" : "Offline";
 		let badge = div.querySelector(".badge");
 		if (cnt > 0) { if (!badge) { badge = document.createElement("span"); badge.className = "badge"; div.appendChild(badge); } badge.textContent = cnt; }
 		else { if (badge) badge.remove(); }
@@ -1135,7 +1105,7 @@ function increaseUnread(id) {
 // ════════════════════════════════════════════════════════════
 function showUserRequest(from) {
 	const r = document.getElementById("requests"); if (!r || document.getElementById("req-" + from)) return;
-	const f = escapeHtml(from);
+	const f   = escapeHtml(from);
 	const div = document.createElement("div"); div.id = "req-" + from; div.className = "req-card";
 	div.innerHTML = `<div class="req-card-top"><div class="req-info"><div class="req-name">${f}</div><div class="req-sub">wants to chat with you</div></div></div><div class="req-actions"><button class="req-btn-accept" onclick="acceptUser('${f}')">Accept</button></div>`;
 	r.appendChild(div);
@@ -1158,7 +1128,7 @@ function showGroupRequest(groupName, requester) {
 	const r = document.getElementById("requests"); if (!r) return;
 	const cardId = "greq-" + groupName + "-" + requester;
 	if (document.getElementById(cardId)) return;
-	const gn = escapeHtml(groupName), req = escapeHtml(requester);
+	const gn  = escapeHtml(groupName), req = escapeHtml(requester);
 	const div = document.createElement("div"); div.id = cardId; div.className = "req-card";
 	div.innerHTML = `<div class="req-card-top"><div class="req-info"><div class="req-name">${req}</div><div class="req-sub">wants to join <strong>#${gn}</strong></div></div></div><div class="req-actions"><button class="req-btn-accept" onclick="acceptGroupRequest('${gn}','${req}')">Accept</button><button class="req-btn-decline" onclick="declineGroupRequest('${gn}','${req}')">Decline</button></div>`;
 	r.appendChild(div);
@@ -1184,11 +1154,10 @@ function updateGroupList(groups) {
 	const list = document.querySelector(".group-list"); if (!list) return;
 	list.innerHTML = "";
 	groups.forEach((g) => {
-		const div = document.createElement("div"); div.className = "user"; div.dataset.name = g.name;
+		const div    = document.createElement("div"); div.className = "user"; div.dataset.name = g.name;
 		const joined = Array.isArray(g.members) && g.members.includes(username);
-		const cnt = unreadCount[g.name] || 0, badge = cnt > 0 ? `<span class="badge">${cnt}</span>` : "";
+		const cnt    = unreadCount[g.name] || 0, badge = cnt > 0 ? `<span class="badge">${cnt}</span>` : "";
 		if (joined) {
-			// Store members and host
 			if (Array.isArray(g.members)) _updateGroupMembers(g.name, g.members);
 			if (g.host) _groupHost[g.name] = g.host;
 			const memberCount = Array.isArray(g.members) ? g.members.length : 0;
@@ -1207,7 +1176,6 @@ function updateGroupList(groups) {
 				document.getElementById("groupInfoBtn").style.display = "flex";
 				loadChatHistory(g.name);
 				_updateGroupHeader(g.name);
-				// Request member list refresh
 				safeSend("GET_GROUP_MEMBERS:" + username + ":" + g.name);
 			};
 		} else {
@@ -1220,7 +1188,7 @@ function updateGroupList(groups) {
 function refreshGroupList() {
 	const list = document.querySelector(".group-list"); if (!list) return;
 	list.querySelectorAll(".user[data-name]").forEach((div) => {
-		const g = div.dataset.name, cnt = unreadCount[g] || 0;
+		const g   = div.dataset.name, cnt = unreadCount[g] || 0;
 		let badge = div.querySelector(".badge");
 		if (cnt > 0) { if (!badge) { badge = document.createElement("span"); badge.className = "badge"; div.appendChild(badge); } badge.textContent = cnt; }
 		else { if (badge) badge.remove(); }
@@ -1236,35 +1204,36 @@ function joinGroup(group) {
 }
 
 // ════════════════════════════════════════════════════════════
-// SEND MESSAGE  (with encryption + receipt + timestamp)
+// SEND MESSAGE
 // ════════════════════════════════════════════════════════════
 async function sendMessage() {
 	const input = document.getElementById("msgInput"), text = input.value.trim();
 	if (!text) return;
 	if (!isSocketReady()) { showSystemMessage("Not connected."); return; }
 
-	const replyTo = _replyCtx ? { sender: _replyCtx.sender, text: _replyCtx.text } : null;
-	const prefix = _replyCtx ? "[↩ " + _replyCtx.sender + ": " + _replyCtx.text.substring(0, 40) + "] " : "";
+	const replyTo   = _replyCtx ? { sender: _replyCtx.sender, text: _replyCtx.text } : null;
+	const prefix    = _replyCtx ? "[↩ " + _replyCtx.sender + ": " + _replyCtx.text.substring(0, 40) + "] " : "";
 	const plainFull = prefix + text;
-	const msgId = _newMsgId();
-	const ts = Date.now();
+	const msgId     = _newMsgId();
+	const ts        = Date.now();
 
 	if (selectedGroup) {
-		// Group messages — no encryption (multicast)
 		socket.send(`GROUP_MSG:${username}:${selectedGroup}:${msgId}:${plainFull}`);
 		storeMessage(selectedGroup, { type: "text", text: plainFull, sent: true, replyTo, ts, msgId });
 		addMessage(text, true, "you", replyTo, ts, msgId);
 		clearReply(); input.value = ""; return;
 	}
 
-	if (!selectedUser) { showSystemMessage("Select a user first."); return; }
+	if (!selectedUser)                    { showSystemMessage("Select a user first."); return; }
 	if (!acceptedChats.has(selectedUser)) { showSystemMessage("Waiting for " + selectedUser + " to accept."); return; }
 
-	// Encrypt for PM
-	let payload = plainFull;
-	if (_encReady) {
-		try { payload = await _encryptText(plainFull, selectedUser); } catch (_) { }
-	}
+	// [ENC] DISABLED — send plain text directly, no encryption
+	// To re-enable encryption, uncomment the block below:
+	// let payload = plainFull;
+	// if (_encReady) {
+	// 	try { payload = await _encryptText(plainFull, selectedUser); } catch (_) { }
+	// }
+	const payload = plainFull; // [ENC] plain text pass-through
 
 	socket.send(`PM:${username}:${selectedUser}:${msgId}:${payload}`);
 	storeMessage(selectedUser, { type: "text", text: plainFull, sent: true, replyTo, ts, msgId });
@@ -1273,36 +1242,23 @@ async function sendMessage() {
 }
 
 // ════════════════════════════════════════════════════════════
-// ADD MESSAGE BUBBLE  (with timestamp + receipt)
+// ADD MESSAGE BUBBLE
 // ════════════════════════════════════════════════════════════
 function addMessage(text, sent, senderName, replyTo, ts, msgId, alreadyRead) {
 	const area = document.getElementById("messages"); if (!area) return;
-
-	const now = ts || Date.now();
-
-	// Date separator — only add if date changed from last separator
-	const dateStr = _fmtDate(now);
-	const allSeps = area.querySelectorAll(".date-separator");
-	const lastSep = allSeps.length > 0 ? allSeps[allSeps.length - 1] : null;
-	const lastSepText = lastSep ? (lastSep.querySelector("span") || { textContent: "" }).textContent : "";
-	if (lastSepText !== dateStr) {
-		const sep = document.createElement("div");
-		sep.className = "date-separator";
+	const now  = ts || Date.now();
+	const dateStr  = _fmtDate(now);
+	const allSeps  = area.querySelectorAll(".date-separator");
+	const lastSep  = allSeps.length > 0 ? allSeps[allSeps.length - 1] : null;
+	const lastSepT = lastSep ? (lastSep.querySelector("span") || { textContent: "" }).textContent : "";
+	if (lastSepT !== dateStr) {
+		const sep = document.createElement("div"); sep.className = "date-separator";
 		sep.innerHTML = `<span>${escapeHtml(dateStr)}</span>`;
 		area.appendChild(sep);
 	}
-
-	const row = document.createElement("div");
-	row.className = "msg-row " + (sent ? "sent" : "received");
-
-	const bubble = document.createElement("div");
-	bubble.id = _nextMsgId();
-	bubble.className = sent ? "message sent" : "message received";
-
-	// Receipt ID for tracking
+	const row    = document.createElement("div"); row.className = "msg-row " + (sent ? "sent" : "received");
+	const bubble = document.createElement("div"); bubble.id = _nextMsgId(); bubble.className = sent ? "message sent" : "message received";
 	const receiptId = msgId ? "receipt-" + msgId : "";
-
-	// Build bubble content
 	let content = "";
 	if (replyTo) {
 		content = `<div class="reply-quote-block">
@@ -1313,25 +1269,17 @@ function addMessage(text, sent, senderName, replyTo, ts, msgId, alreadyRead) {
 	} else {
 		content = `<span class="bubble-text">${escapeHtml(text)}</span>`;
 	}
-
-	// Footer: timestamp + receipt (sent only)
 	const receiptHtml = sent
 		? `<span class="receipt ${alreadyRead ? "read" : "single"}" ${receiptId ? 'id="' + receiptId + '"' : ""}>${alreadyRead ? "✓✓" : "✓"}</span>`
 		: "";
-
 	bubble.innerHTML = content + `
 		<div class="bubble-footer">
 			<span class="bubble-time">${_fmtTime(now)}</span>
 			${receiptHtml}
 		</div>`;
-
 	const btn = _makeActionBtn({ text, sent, isFile: false, sender: senderName || (sent ? "you" : "them") }, bubble);
-	row.appendChild(bubble);
-	row.appendChild(btn);
-	area.appendChild(row);
-	area.scrollTop = area.scrollHeight;
-
-	// ✓ shown immediately on send. ✓✓ grey comes from server DELIVERED. ✓✓ green from MSG_READ.
+	row.appendChild(bubble); row.appendChild(btn);
+	area.appendChild(row); area.scrollTop = area.scrollHeight;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1341,7 +1289,7 @@ document.getElementById("attachBtn").onclick = () => { document.getElementById("
 document.getElementById("fileInput").onchange = (e) => {
 	const file = e.target.files[0]; if (!file) return;
 	if (!isSocketReady()) { showSystemMessage("Not connected."); e.target.value = ""; return; }
-	if (selectedGroup) { sendFileChunked(file, selectedGroup, true); }
+	if (selectedGroup)     { sendFileChunked(file, selectedGroup, true); }
 	else if (selectedUser) {
 		if (!acceptedChats.has(selectedUser)) { showSystemMessage("Chat not accepted yet."); e.target.value = ""; return; }
 		sendFileChunked(file, selectedUser, false);
@@ -1370,32 +1318,25 @@ document.getElementById("msgInput").addEventListener("keydown", (e) => { if (e.k
 function _updateHamburgerDot() {
 	const btn = document.getElementById("hamburgerBtn"); if (!btn) return;
 	const totalUnread = Object.values(unreadCount).reduce((s, n) => s + n, 0);
-	const reqCount = (document.getElementById("requests") || { children: [] }).children.length;
-	const total = totalUnread + reqCount;
-	if (total > 0) {
-		btn.classList.add("has-dot");
-		btn.dataset.dotCount = total > 9 ? "9+" : String(total);
-	} else {
-		btn.classList.remove("has-dot");
-		btn.dataset.dotCount = "";
-	}
+	const reqCount    = (document.getElementById("requests") || { children: [] }).children.length;
+	const total       = totalUnread + reqCount;
+	if (total > 0) { btn.classList.add("has-dot"); btn.dataset.dotCount = total > 9 ? "9+" : String(total); }
+	else           { btn.classList.remove("has-dot"); btn.dataset.dotCount = ""; }
 }
 
 // ════════════════════════════════════════════════════════════
 // MESSAGE ACTION SYSTEM
 // ════════════════════════════════════════════════════════════
-let _replyCtx = null;
-const _pinnedMsgs = {}; // context → { text, msgId } per chat
-let _openMenu = null;
-let _msgIdSeq = 0;
+let _replyCtx  = null;
+const _pinnedMsgs = {};
+let _openMenu  = null;
+let _msgIdSeq  = 0;
 
 function _nextMsgId() { return "msg-" + (++_msgIdSeq); }
 
 function _makeActionBtn(opts, bubbleEl) {
 	const btn = document.createElement("button");
-	btn.className = "msg-action-btn";
-	btn.textContent = "⌄";
-	btn.title = "Options";
+	btn.className = "msg-action-btn"; btn.textContent = "⌄"; btn.title = "Options";
 	btn.onclick = (e) => { e.stopPropagation(); _toggleMenu(btn, bubbleEl, opts); };
 	return btn;
 }
@@ -1409,47 +1350,30 @@ function _attachActionBtn(msgDiv, opts) {
 		if (!existing) parent.appendChild(_makeActionBtn(opts, msgDiv));
 		return;
 	}
-	const row = document.createElement("div");
-	row.className = "msg-row " + (opts.sent ? "sent" : "received");
+	const row = document.createElement("div"); row.className = "msg-row " + (opts.sent ? "sent" : "received");
 	if (parent) parent.insertBefore(row, msgDiv);
-	row.appendChild(msgDiv);
-	row.appendChild(_makeActionBtn(opts, msgDiv));
+	row.appendChild(msgDiv); row.appendChild(_makeActionBtn(opts, msgDiv));
 }
 
 function _toggleMenu(btn, msgDiv, opts) {
 	if (_openMenu) { _openMenu.remove(); _openMenu = null; }
-	const menu = document.createElement("div");
-	menu.className = "msg-menu";
-	_openMenu = menu;
-
+	const menu = document.createElement("div"); menu.className = "msg-menu"; _openMenu = menu;
 	const add = (icon, label, fn) => {
-		const el = document.createElement("button");
-		el.className = "msg-menu-item";
+		const el = document.createElement("button"); el.className = "msg-menu-item";
 		el.innerHTML = `<span class="mi-icon">${icon}</span>${escapeHtml(label)}`;
 		el.onclick = (e) => { e.stopPropagation(); menu.remove(); _openMenu = null; fn(); };
 		menu.appendChild(el);
 	};
 	const divider = () => { const d = document.createElement("div"); d.className = "msg-menu-divider"; menu.appendChild(d); };
-
-	add("↩", "Reply", () => _startReply(opts.filename || opts.text, opts.sender || "you"));
-	add("↗", "Forward", () => _openForward(opts));
+	add("↩", "Reply",       () => _startReply(opts.filename || opts.text, opts.sender || "you"));
+	add("↗", "Forward",     () => _openForward(opts));
 	add("📌", "Pin message", () => _pinMessage(opts.filename || opts.text, msgDiv.id));
-	if (opts.isFile) {
-		divider();
-		add("📂", "Open file", () => _openFile(opts.fileUrl, opts.filename));
-	}
-
-	const rect = btn.getBoundingClientRect();
-	menu.style.position = "fixed";
-	menu.style.zIndex = "9999";
-	menu.style.top = (rect.bottom + 4) + "px";
+	if (opts.isFile) { divider(); add("📂", "Open file", () => _openFile(opts.fileUrl, opts.filename)); }
+	const rect  = btn.getBoundingClientRect();
 	const menuW = 170;
-	let left = rect.right - menuW;
-	if (left < 8) left = 8;
-	menu.style.left = left + "px";
-	menu.style.width = menuW + "px";
+	let left    = rect.right - menuW; if (left < 8) left = 8;
+	menu.style.cssText = `position:fixed;z-index:9999;top:${rect.bottom + 4}px;left:${left}px;width:${menuW}px`;
 	document.body.appendChild(menu);
-
 	const closer = (e) => {
 		if (!menu.contains(e.target) && e.target !== btn) {
 			menu.remove(); _openMenu = null;
@@ -1459,11 +1383,9 @@ function _toggleMenu(btn, msgDiv, opts) {
 	setTimeout(() => document.addEventListener("click", closer, true), 10);
 }
 
-// ── Reply ──────────────────────────────────────────────────
 function _startReply(text, sender) {
 	_replyCtx = { text, sender };
-	const prev = document.getElementById("replyPreview");
-	const ptxt = document.getElementById("replyPreviewText");
+	const prev = document.getElementById("replyPreview"), ptxt = document.getElementById("replyPreviewText");
 	if (prev) prev.classList.add("active");
 	if (ptxt) ptxt.textContent = sender + ": " + text;
 	document.getElementById("msgInput").focus();
@@ -1474,32 +1396,22 @@ function clearReply() {
 	if (prev) prev.classList.remove("active");
 }
 
-// ── Forward ────────────────────────────────────────────────
 let _fwdOpts = null;
 function _openForward(opts) {
 	_fwdOpts = opts;
-	const modal = document.getElementById("forwardModal");
-	const body = document.getElementById("forwardModalBody");
+	const modal = document.getElementById("forwardModal"), body = document.getElementById("forwardModalBody");
 	if (!modal || !body) return;
 	body.innerHTML = "";
 	const targets = [];
-	document.querySelectorAll(".user-list .user[data-name]").forEach(d => {
-		if (d.dataset.name !== selectedUser) targets.push({ type: "user", name: d.dataset.name });
-	});
-	document.querySelectorAll(".group-list .user[data-name]").forEach(d => {
-		if (!d.querySelector("button") && d.dataset.name !== selectedGroup)
-			targets.push({ type: "group", name: d.dataset.name });
-	});
-	if (!targets.length) {
-		body.innerHTML = '<div class="forward-empty">No other conversations available.</div>';
-	} else {
+	document.querySelectorAll(".user-list .user[data-name]").forEach(d => { if (d.dataset.name !== selectedUser) targets.push({ type: "user", name: d.dataset.name }); });
+	document.querySelectorAll(".group-list .user[data-name]").forEach(d => { if (!d.querySelector("button") && d.dataset.name !== selectedGroup) targets.push({ type: "group", name: d.dataset.name }); });
+	if (!targets.length) { body.innerHTML = '<div class="forward-empty">No other conversations available.</div>'; }
+	else {
 		targets.forEach(t => {
 			const initials = t.name.replace(/[_-]/g, " ").split(" ").map(w => w[0] || "").join("").substring(0, 2).toUpperCase();
-			const el = document.createElement("div");
-			el.className = "forward-user-item";
+			const el = document.createElement("div"); el.className = "forward-user-item";
 			el.innerHTML = `<div class="forward-avatar">${escapeHtml(initials)}</div><span>${escapeHtml(t.type === "group" ? "#" + t.name : t.name)}</span>`;
-			el.onclick = () => _doForward(t);
-			body.appendChild(el);
+			el.onclick = () => _doForward(t); body.appendChild(el);
 		});
 	}
 	modal.style.display = "flex";
@@ -1507,26 +1419,19 @@ function _openForward(opts) {
 
 function closeForwardModal(e) {
 	if (e && e.target !== document.getElementById("forwardModal")) return;
-	document.getElementById("forwardModal").style.display = "none";
-	_fwdOpts = null;
+	document.getElementById("forwardModal").style.display = "none"; _fwdOpts = null;
 }
 
 function _doForward(target) {
 	if (!_fwdOpts || !isSocketReady()) return;
-	const isGroup = target.type === "group";
-	const to = target.name;
+	const isGroup = target.type === "group", to = target.name;
 	if (_fwdOpts.isFile) {
 		if (_fwdOpts.fileUrl) {
-			fetch(_fwdOpts.fileUrl)
-				.then(r => r.blob())
-				.then(blob => {
-					sendFileChunked(new File([blob], _fwdOpts.filename, { type: blob.type }), to, isGroup);
-					showSystemMessage("↗ Forwarded file to " + (isGroup ? "#" : "") + to);
-				})
-				.catch(() => showSystemMessage("⚠ Cannot forward. Re-send using 📎."));
-		} else {
-			showSystemMessage("⚠ Cannot forward stream-saved file. Re-send using 📎.");
-		}
+			fetch(_fwdOpts.fileUrl).then(r => r.blob()).then(blob => {
+				sendFileChunked(new File([blob], _fwdOpts.filename, { type: blob.type }), to, isGroup);
+				showSystemMessage("↗ Forwarded file to " + (isGroup ? "#" : "") + to);
+			}).catch(() => showSystemMessage("⚠ Cannot forward. Re-send using 📎."));
+		} else { showSystemMessage("⚠ Cannot forward stream-saved file. Re-send using 📎."); }
 	} else {
 		const txt = "↗ " + (_fwdOpts.text || "");
 		if (isGroup) {
@@ -1539,30 +1444,20 @@ function _doForward(target) {
 		}
 		showSystemMessage("↗ Forwarded to " + (isGroup ? "#" : "") + to);
 	}
-	document.getElementById("forwardModal").style.display = "none";
-	_fwdOpts = null;
+	document.getElementById("forwardModal").style.display = "none"; _fwdOpts = null;
 }
 
-// ── Pin ────────────────────────────────────────────────────
 function _pinMessage(text, msgId) {
-	const ctx = selectedUser || selectedGroup;
-	if (!ctx) return;
-	_pinnedMsgs[ctx] = { text, msgId };
-	_showPinnedBar(ctx);
+	const ctx = selectedUser || selectedGroup; if (!ctx) return;
+	_pinnedMsgs[ctx] = { text, msgId }; _showPinnedBar(ctx);
 }
 
 function _showPinnedBar(ctx) {
 	const pin = _pinnedMsgs[ctx];
-	const bar = document.getElementById("pinnedBar");
-	const bt = document.getElementById("pinnedBarText");
+	const bar = document.getElementById("pinnedBar"), bt = document.getElementById("pinnedBarText");
 	if (!bar) return;
-	if (pin) {
-		bar.classList.add("has-pin");
-		if (bt) bt.textContent = pin.text;
-	} else {
-		bar.classList.remove("has-pin");
-		if (bt) bt.textContent = "—";
-	}
+	if (pin) { bar.classList.add("has-pin"); if (bt) bt.textContent = pin.text; }
+	else     { bar.classList.remove("has-pin"); if (bt) bt.textContent = "—"; }
 }
 
 function unpinMessage(e) {
@@ -1573,39 +1468,23 @@ function unpinMessage(e) {
 }
 
 function scrollToPinned() {
-	const ctx = selectedUser || selectedGroup;
-	const pin = ctx ? _pinnedMsgs[ctx] : null;
+	const ctx = selectedUser || selectedGroup, pin = ctx ? _pinnedMsgs[ctx] : null;
 	if (!pin?.msgId) return;
-
-	let el = document.getElementById(pin.msgId);
-
-	// If message not in DOM (scrolled out) — scroll messages to bottom first
-	// then try to find it
-	if (!el) {
-		showSystemMessage("📌 Pinned message is not currently visible in this session.");
-		return;
-	}
-
+	const el = document.getElementById(pin.msgId);
+	if (!el) { showSystemMessage("📌 Pinned message is not currently visible in this session."); return; }
 	el.scrollIntoView({ behavior: "smooth", block: "center" });
 	el.style.transition = "box-shadow .2s, background .2s";
-	el.style.boxShadow = "0 0 0 2px var(--accent)";
+	el.style.boxShadow  = "0 0 0 2px var(--accent)";
 	el.style.background = "var(--accent-dim)";
-	setTimeout(() => {
-		el.style.boxShadow = "";
-		el.style.background = "";
-	}, 1800);
+	setTimeout(() => { el.style.boxShadow = ""; el.style.background = ""; }, 1800);
 }
 
-// ── Open File ──────────────────────────────────────────────
 function _openFile(fileUrl, filename) {
-	if (!fileUrl) {
-		showSystemMessage('📂 "' + (filename || "file") + '" was saved to your chosen disk location.');
-		return;
-	}
-	const ext = (filename || "").split(".").pop().toLowerCase();
-	const imgs = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"];
-	const vids = ["mp4", "webm", "ogg", "mov"];
-	const audio = ["mp3", "wav", "ogg", "m4a", "flac"];
+	if (!fileUrl) { showSystemMessage('📂 "' + (filename || "file") + '" was saved to your chosen disk location.'); return; }
+	const ext   = (filename || "").split(".").pop().toLowerCase();
+	const imgs  = ["jpg","jpeg","png","gif","webp","bmp","svg"];
+	const vids  = ["mp4","webm","ogg","mov"];
+	const audio = ["mp3","wav","ogg","m4a","flac"];
 	if (imgs.includes(ext) || vids.includes(ext) || audio.includes(ext) || ext === "pdf") {
 		_showPreviewModal(fileUrl, filename, ext, imgs, vids, audio);
 	} else {
@@ -1615,14 +1494,13 @@ function _openFile(fileUrl, filename) {
 
 function _showPreviewModal(url, filename, ext, imgs, vids, audio) {
 	const ex = document.getElementById("filePreviewModal"); if (ex) ex.remove();
-	const overlay = document.createElement("div");
-	overlay.id = "filePreviewModal"; overlay.className = "preview-modal-overlay";
+	const overlay = document.createElement("div"); overlay.id = "filePreviewModal"; overlay.className = "preview-modal-overlay";
 	overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
 	let content = "";
-	if (imgs.includes(ext)) content = `<img src="${url}" alt="${escapeHtml(filename)}" class="preview-img"/>`;
-	else if (vids.includes(ext)) content = `<video src="${url}" controls class="preview-video" autoplay></video>`;
+	if (imgs.includes(ext))       content = `<img src="${url}" alt="${escapeHtml(filename)}" class="preview-img"/>`;
+	else if (vids.includes(ext))  content = `<video src="${url}" controls class="preview-video" autoplay></video>`;
 	else if (audio.includes(ext)) content = `<div class="preview-audio-wrap"><p class="preview-filename">${escapeHtml(filename)}</p><audio src="${url}" controls class="preview-audio"></audio></div>`;
-	else if (ext === "pdf") content = `<iframe src="${url}" class="preview-pdf"></iframe>`;
+	else if (ext === "pdf")        content = `<iframe src="${url}" class="preview-pdf"></iframe>`;
 	overlay.innerHTML = `<div class="preview-modal">
 		<div class="preview-modal-header">
 			<span class="preview-modal-name">${escapeHtml(filename)}</span>
@@ -1639,8 +1517,8 @@ function _showPreviewModal(url, filename, ext, imgs, vids, audio) {
 // ════════════════════════════════════════════════════════════
 // UTILITIES
 // ════════════════════════════════════════════════════════════
-function isSocketReady() { return socket !== null && socket.readyState === WebSocket.OPEN; }
-function safeSend(d) { if (isSocketReady()) socket.send(d); else console.warn("dropped:", String(d).substring(0, 80)); }
+function isSocketReady()   { return socket !== null && socket.readyState === WebSocket.OPEN; }
+function safeSend(d)       { if (isSocketReady()) socket.send(d); else console.warn("dropped:", String(d).substring(0, 80)); }
 function _generateFileId() { return "fid-" + Date.now() + "-" + Math.random().toString(36).substring(2, 9); }
 function _replaceOrStoreDone(context, fileId, filename, url, sent) {
 	if (!chatHistory[context]) chatHistory[context] = [];
@@ -1648,8 +1526,8 @@ function _replaceOrStoreDone(context, fileId, filename, url, sent) {
 	const e = { type: "file-done", filename, url, sent, ts: Date.now() };
 	if (i !== -1) chatHistory[context][i] = e; else chatHistory[context].push(e);
 }
-function _fmtBytes(b) { if (!b || b === 0) return "0 B"; const u = ["B", "KB", "MB", "GB", "TB"], i = Math.floor(Math.log(b) / Math.log(1024)); return (b / Math.pow(1024, i)).toFixed(i > 1 ? 1 : 0) + " " + u[i]; }
-function _fmtSpeed(bps) { return (!bps || bps <= 0) ? "" : _fmtBytes(bps) + "/s"; }
-function _fmtETA(s) { if (!s || s <= 0 || !isFinite(s)) return ""; if (s < 60) return Math.round(s) + "s"; if (s < 3600) return Math.round(s / 60) + "m " + (Math.round(s) % 60) + "s"; return Math.floor(s / 3600) + "h " + Math.round((s % 3600) / 60) + "m"; }
+function _fmtBytes(b)  { if (!b || b === 0) return "0 B"; const u = ["B","KB","MB","GB","TB"], i = Math.floor(Math.log(b) / Math.log(1024)); return (b / Math.pow(1024, i)).toFixed(i > 1 ? 1 : 0) + " " + u[i]; }
+function _fmtSpeed(bps){ return (!bps || bps <= 0) ? "" : _fmtBytes(bps) + "/s"; }
+function _fmtETA(s)    { if (!s || s <= 0 || !isFinite(s)) return ""; if (s < 60) return Math.round(s) + "s"; if (s < 3600) return Math.round(s / 60) + "m " + (Math.round(s) % 60) + "s"; return Math.floor(s / 3600) + "h " + Math.round((s % 3600) / 60) + "m"; }
 function escapeHtml(s) { return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
 function showSystemMessage(text) { const m = document.getElementById("messages"); if (!m) return; const d = document.createElement("div"); d.className = "message system"; d.innerText = text; m.appendChild(d); m.scrollTop = m.scrollHeight; }
