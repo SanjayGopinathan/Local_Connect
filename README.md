@@ -23,9 +23,9 @@ Local\_Connect — LAN Chat \& File Transfer
 - Security : AES-GCM 256-bit end-to-end encryption (HKDF)
 
 
-# \## How to Run
+# How to Run
 
-# \### Requirements
+# Requirements
 
 - Java 17+
 
@@ -33,33 +33,23 @@ Local\_Connect — LAN Chat \& File Transfer
 
 # 
 
-# \### Run on Local Network
+# Run on Local Network
 
-# ```bash
+#bash
 
-# mvn clean package -DskipTests
+#mvn clean package -DskipTests
 
-# java -jar target/lanchat.jar
+#java -jar target/lanchat.jar
 
-# ```
-
-# 
-
-# Open browser on any device on same WiFi:
-
-# ```
+Open browser on any device on same WiFi:
 
 # http://YOUR\_IP:8080
 
-# ```
-
-# 
-
 # Find your IP using ipconfig (Windows) or hostname -I (Linux)
 
-# 
 
-# \## Why This Project?
+
+# Why This Project?
 
 - Works without internet — perfect for hospitals, offices, exam halls
 
@@ -69,9 +59,9 @@ Local\_Connect — LAN Chat \& File Transfer
 
 - No phone number needed — just a username
 
-# 
 
-# \## Author
+
+#
 
 # Sanjay Gopinathan
 
