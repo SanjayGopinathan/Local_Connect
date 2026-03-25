@@ -1,68 +1,35 @@
-# notepad README.md
+Local\_Connect — LAN Chat \& File Transfer
 
-# ```
+ #A real-time LAN-based chat and file transfer application.
+  Works WITHOUT internet connection.
+-Private messaging with AES-GCM encryption
+- Group chat system
+- Chunk-based file transfer (supports 100MB+ files)
+- Typing indicator
+- Read receipts (single tick / double tick)
+- Online/offline status
+- File pause and resume
+- Works on browser and mobile
 
-# 
 
-# Notepad opens and asks "File not found, create it?" — click \*\*Yes\*\*
+# Tech Stack
 
-# 
+- Backend  : Spring Boot, Java, WebSocket
 
-# \*\*Step 2 — Paste this content inside Notepad:\*\*
+- Frontend : HTML, CSS, Vanilla JavaScript
 
-# ```
+- Protocol : Custom WebSocket binary + text frames
 
-# \# Local\_Connect — LAN Chat \& File Transfer
+- Security : AES-GCM 256-bit end-to-end encryption (HKDF)
 
-# 
-
-# A real-time LAN-based chat and file transfer application.
-
-# Works WITHOUT internet connection.
-
-# 
-
-# \## Features
-
-# \- Private messaging with AES-GCM encryption
-
-# \- Group chat system
-
-# \- Chunk-based file transfer (supports 100MB+ files)
-
-# \- Typing indicator
-
-# \- Read receipts (single tick / double tick)
-
-# \- Online/offline status
-
-# \- File pause and resume
-
-# \- Works on browser and mobile
-
-# 
-
-# \## Tech Stack
-
-# \- Backend  : Spring Boot, Java, WebSocket
-
-# \- Frontend : HTML, CSS, Vanilla JavaScript
-
-# \- Protocol : Custom WebSocket binary + text frames
-
-# \- Security : AES-GCM 256-bit end-to-end encryption (HKDF)
-
-# 
 
 # \## How to Run
 
-# 
-
 # \### Requirements
 
-# \- Java 17+
+- Java 17+
 
-# \- Maven 3.x
+- Maven 3.x
 
 # 
 
@@ -94,13 +61,13 @@
 
 # \## Why This Project?
 
-# \- Works without internet — perfect for hospitals, offices, exam halls
+- Works without internet — perfect for hospitals, offices, exam halls
 
-# \- Data never leaves your network — complete privacy
+- Data never leaves your network — complete privacy
 
-# \- File transfer at full LAN speed with no size limit
+- File transfer at full LAN speed with no size limit
 
-# \- No phone number needed — just a username
+- No phone number needed — just a username
 
 # 
 
